@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoTest UI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    body { background:#0f1117; color:#e2e8f0; font-family:'Inter',sans-serif; }
+    .tab-active   { border-bottom:2px solid #6366f1; color:#818cf8; }
+    .tab-inactive { border-bottom:2px solid transparent; color:#64748b; }
+    .method-get    { color:#34d399; } .method-post  { color:#fbbf24; }
+    .method-put    { color:#60a5fa; } .method-patch { color:#a78bfa; }
+    .method-delete { color:#f87171; }
+    .badge-passed  { background:#064e3b; color:#34d399; }
+    .badge-failed  { background:#450a0a; color:#f87171; }
+    .badge-running { background:#1e3a5f; color:#60a5fa; }
+    .badge-error   { background:#450a0a; color:#fbbf24; }
+    pre code.hljs  { border-radius:8px; font-size:12px; }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:#1e293b; }
+    ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+    .kv-row input  { background:#1e293b; border:1px solid #334155; color:#e2e8f0; padding:4px 8px; border-radius:4px; width:100%; font-size:13px; }
+    .kv-row input:focus { outline:none; border-color:#6366f1; }
+    #console-output { font-family:monospace; font-size:12px; white-space:pre-wrap; }
+    .line-passed { color:#34d399; } .line-failed { color:#f87171; } .line-info { color:#94a3b8; }
+
+    /* Sidebar */
+    .folder-item   { border-radius:6px; }
+    .folder-item:hover .folder-actions { display:flex; }
+    .folder-actions { display:none; }
+    .tc-item:hover { background:#1e293b; }
+    .tc-item.active { background:#1e3a5f !important; }
+    .folder-toggle { transition: transform 0.15s; }
+    .folder-toggle.open { transform: rotate(90deg); }
+    .rename-input  { background:#1e293b; border:1px solid #6366f1; color:#e2e8f0; border-radius:4px; padding:1px 6px; font-size:13px; outline:none; width:100%; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="flex items-center justify-between px-5 py-2.5 border-b border-slate-700/60 bg-slate-900 shrink-0">
+  <div class="flex items-center gap-3">
+    <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">AT</div>
+    <span class="font-semibold text-white">AutoTest UI</span>
+  </div>
+  <nav class="flex gap-1">
+    <button onclick="showPage('new')"     id="nav-new"     class="px-3 py-1.5 rounded-md text-sm font-medium bg-indigo-600 text-white">New Test</button>
+    <button onclick="showPage('history')" id="nav-history" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700">History</button>
+  </nav>
+</header>
+
+<!-- ── Body: sidebar + content ─────────────────────────────────────────────── -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="w-60 shrink-0 flex flex-col border-r border-slate-700/60 bg-slate-900 overflow-hidden">
+    <div class="flex items-center justify-between px-3 py-2.5 border-b border-slate-700/60">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Collections</span>
+      <button onclick="promptNewFolder()" title="New folder"
+        class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 text-lg leading-none">+</button>
+    </div>
+    <div id="sidebar-tree" class="flex-1 overflow-y-auto px-2 py-2 space-y-1"></div>
+  </aside>
+
+  <!-- ════════════════ MAIN CONTENT ════════════════ -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+
+    <!-- ──────────── PAGE: NEW TEST ──────────── -->
+    <div id="page-new" class="flex flex-col flex-1 overflow-hidden">
+
+      <!-- URL bar -->
+      <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-700/60 bg-slate-900 shrink-0">
+        <input id="tc-name" placeholder="Tên test case"
+          class="w-36 bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+
+        <select id="folder-select"
+          class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
+          <option value="">📂 No folder</option>
+        </select>
+
+        <select id="method" onchange="updateMethodColor()"
+          class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-indigo-500 method-get">
+          <option>GET</option><option>POST</option><option>PUT</option>
+          <option>PATCH</option><option>DELETE</option>
+        </select>
+
+        <input id="url" placeholder="https://api.example.com/endpoint"
+          class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+
+        <button onclick="doGenerate()" id="btn-generate"
+          class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg flex items-center gap-1.5 min-w-[130px] justify-center">
+          <span id="gen-icon">⚡</span><span id="gen-text">Generate</span>
+        </button>
+      </div>
+
+      <!-- Params / Headers / Body tabs -->
+      <div class="flex px-4 pt-2 border-b border-slate-700/60 bg-slate-900 shrink-0">
+        <button onclick="switchTab('params')"  id="tab-params"  class="px-3 py-1.5 text-sm font-medium tab-active mr-1">Params</button>
+        <button onclick="switchTab('headers')" id="tab-headers" class="px-3 py-1.5 text-sm font-medium tab-inactive mr-1">Headers</button>
+        <button onclick="switchTab('body')"    id="tab-body"    class="px-3 py-1.5 text-sm font-medium tab-inactive">Body</button>
+      </div>
+
+      <!-- Tab panes -->
+      <div class="bg-slate-900 px-4 py-2 shrink-0" style="min-height:130px">
+        <div id="pane-params">
+          <div id="kv-params" class="space-y-1.5"></div>
+          <button onclick="addKV('params')" class="mt-1.5 text-xs text-indigo-400 hover:text-indigo-300">+ Add param</button>
+        </div>
+        <div id="pane-headers" class="hidden">
+          <div id="kv-headers" class="space-y-1.5"></div>
+          <button onclick="addKV('headers')" class="mt-1.5 text-xs text-indigo-400 hover:text-indigo-300">+ Add header</button>
+        </div>
+        <div id="pane-body" class="hidden">
+          <textarea id="body-input" rows="4" placeholder='{"key": "value"}'
+            class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+          <p id="body-error" class="text-xs text-red-400 mt-1 hidden">JSON không hợp lệ</p>
+        </div>
+      </div>
+
+      <!-- Code | Runner split -->
+      <div class="flex flex-1 overflow-hidden divide-x divide-slate-700/60">
+
+        <!-- Left: Generated Code -->
+        <div class="flex flex-col w-1/2 overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-2 bg-slate-800/60 border-b border-slate-700/60 shrink-0">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Generated Code</span>
+            <button onclick="copyCode()" class="text-xs text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-slate-700">Copy</button>
+          </div>
+          <div class="flex-1 overflow-auto p-3">
+            <div id="code-empty" class="flex flex-col items-center justify-center h-full text-slate-600">
+              <div class="text-3xl mb-2">🧪</div>
+              <p class="text-sm">Nhập API và bấm <strong class="text-slate-500">Generate</strong></p>
+            </div>
+            <pre id="code-block" class="hidden"><code id="code-content" class="language-python"></code></pre>
+          </div>
+        </div>
+
+        <!-- Right: Runner -->
+        <div class="flex flex-col w-1/2 overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-2 bg-slate-800/60 border-b border-slate-700/60 shrink-0">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Test Runner</span>
+            <button onclick="runTests()" id="btn-run" disabled
+              class="px-4 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg flex items-center gap-1.5">
+              ▶ Run Tests
+            </button>
+          </div>
+          <div class="flex-1 overflow-auto bg-slate-950 p-3">
+            <div id="console-empty" class="flex flex-col items-center justify-center h-full text-slate-700">
+              <div class="text-3xl mb-2">⚡</div>
+              <p class="text-sm">Bấm <strong class="text-slate-600">Run Tests</strong> để bắt đầu</p>
+            </div>
+            <div id="console-output" class="hidden"></div>
+          </div>
+          <div id="results-bar" class="hidden items-center gap-4 px-3 py-2.5 bg-slate-800/80 border-t border-slate-700/60 shrink-0">
+            <span class="text-sm text-slate-300">✅ <strong id="res-passed" class="text-emerald-400">0</strong></span>
+            <span class="text-sm text-slate-300">❌ <strong id="res-failed" class="text-red-400">0</strong></span>
+            <span class="text-sm text-slate-300">Total: <strong id="res-total" class="text-slate-300">0</strong></span>
+            <div id="res-badge" class="ml-auto px-3 py-0.5 rounded-full text-xs font-bold"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-new -->
+
+    <!-- ──────────── PAGE: HISTORY ──────────── -->
+    <div id="page-history" class="hidden flex-col flex-1 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900 shrink-0">
+        <h2 class="font-semibold text-white">Test History</h2>
+        <button onclick="loadHistory()" class="text-sm text-indigo-400 hover:text-indigo-300">↻ Refresh</button>
+      </div>
+      <div class="flex-1 overflow-auto px-5 py-4">
+        <p id="history-empty" class="hidden text-slate-600 text-sm text-center py-20">Chưa có lịch sử test nào</p>
+        <table class="w-full text-sm" id="history-table">
+          <thead>
+            <tr class="text-slate-500 text-xs uppercase border-b border-slate-700">
+              <th class="text-left py-2 pr-3">Tên</th>
+              <th class="text-left py-2 pr-3">Method / URL</th>
+              <th class="text-left py-2 pr-3">Status</th>
+              <th class="text-center py-2 pr-3">✅</th>
+              <th class="text-center py-2 pr-3">❌</th>
+              <th class="text-left py-2 pr-3">Thời gian</th>
+              <th class="text-right py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="history-body" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </div><!-- /page-history -->
+
+  </div><!-- /main content -->
+</div><!-- /body -->
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 right-5 bg-red-900/90 border border-red-500/50 text-red-200 px-4 py-2.5 rounded-lg text-sm max-w-sm shadow-xl z-50"></div>
+
+<!-- Output modal -->
+<div id="output-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6">
+  <div class="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700">
+      <span class="font-semibold text-white">Test Output</span>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl">×</button>
+    </div>
+    <pre id="modal-output" class="flex-1 overflow-auto p-5 text-xs font-mono text-slate-300 whitespace-pre-wrap"></pre>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentTestCaseId = null;
+const kvData = { params: [], headers: [] };
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function showPage(p) {
+  const isNew = p === 'new';
+  document.getElementById('page-new').classList.toggle('hidden', !isNew);
+  document.getElementById('page-new').classList.toggle('flex', isNew);
+  document.getElementById('page-history').classList.toggle('hidden', isNew);
+  document.getElementById('page-history').classList.toggle('flex', !isNew);
+
+  const active   = 'px-3 py-1.5 rounded-md text-sm font-medium bg-indigo-600 text-white';
+  const inactive = 'px-3 py-1.5 rounded-md text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700';
+  document.getElementById('nav-new').className     = isNew  ? active : inactive;
+  document.getElementById('nav-history').className = !isNew ? active : inactive;
+
+  if (!isNew) loadHistory();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  ['params','headers','body'].forEach(n => {
+    document.getElementById(`pane-${n}`).classList.toggle('hidden', n !== t);
+    document.getElementById(`tab-${n}`).className =
+      `px-3 py-1.5 text-sm font-medium mr-1 ${n===t?'tab-active':'tab-inactive'}`;
+  });
+}
+
+// ─── Method color ─────────────────────────────────────────────────────────────
+function updateMethodColor() {
+  const s = document.getElementById('method');
+  s.className = `bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-indigo-500 method-${s.value.toLowerCase()}`;
+}
+
+// ─── KV editors ──────────────────────────────────────────────────────────────
+function addKV(type, k='', v='') { kvData[type].push({k,v}); renderKV(type); }
+function removeKV(type, i) { kvData[type].splice(i,1); renderKV(type); }
+function renderKV(type) {
+  document.getElementById(`kv-${type}`).innerHTML = kvData[type].map((r,i)=>`
+    <div class="kv-row flex gap-2 items-center">
+      <input value="${esc(r.k)}" placeholder="Key"   oninput="kvData['${type}'][${i}].k=this.value"/>
+      <input value="${esc(r.v)}" placeholder="Value" oninput="kvData['${type}'][${i}].v=this.value"/>
+      <button onclick="removeKV('${type}',${i})" class="text-slate-500 hover:text-red-400 text-lg px-1">×</button>
+    </div>`).join('');
+}
+function getKVObj(type) {
+  const o={};kvData[type].forEach(({k,v})=>{if(k)o[k]=v;});return o;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+addKV('params'); addKV('headers');
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+let sidebarData = { folders: [], uncategorized: [] };
+
+async function loadSidebar() {
+  const res = await fetch('/api/folders');
+  sidebarData = await res.json();
+  renderSidebar();
+  refreshFolderSelect();
+}
+
+function renderSidebar() {
+  const tree = document.getElementById('sidebar-tree');
+  let html = '';
+
+  sidebarData.folders.forEach(f => {
+    const isOpen = f._open !== false; // default open
+    html += `
+    <div class="folder-item" id="folder-${f.id}">
+      <div class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-slate-800 cursor-pointer group"
+           onclick="toggleFolder('${f.id}')">
+        <span class="folder-toggle text-slate-500 text-xs ${isOpen?'open':''}" id="chevron-${f.id}">▶</span>
+        <span class="text-sm mr-1">📁</span>
+        <span id="fname-${f.id}" class="text-sm text-slate-200 flex-1 truncate">${esc(f.name)}</span>
+        <span class="folder-actions items-center gap-1">
+          <button onclick="event.stopPropagation();startRename('${f.id}')" title="Rename"
+            class="text-slate-500 hover:text-indigo-400 text-xs px-1">✏️</button>
+          <button onclick="event.stopPropagation();deleteFolder('${f.id}')" title="Delete"
+            class="text-slate-500 hover:text-red-400 text-xs px-1">🗑️</button>
+        </span>
+      </div>
+      <div id="folder-cases-${f.id}" class="${isOpen?'':'hidden'} pl-5 space-y-0.5">
+        ${f.test_cases.map(tc => renderTCItem(tc)).join('')}
+        ${f.test_cases.length===0?'<p class="text-xs text-slate-600 px-2 py-1">Empty</p>':''}
+      </div>
+    </div>`;
+  });
+
+  // Uncategorized
+  if (sidebarData.uncategorized.length > 0) {
+    html += `
+    <div class="folder-item" id="folder-uncategorized">
+      <div class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-slate-800 cursor-pointer"
+           onclick="toggleFolder('uncategorized')">
+        <span class="folder-toggle text-slate-500 text-xs open" id="chevron-uncategorized">▶</span>
+        <span class="text-sm mr-1">📂</span>
+        <span class="text-sm text-slate-400 flex-1">Uncategorized</span>
+      </div>
+      <div id="folder-cases-uncategorized" class="pl-5 space-y-0.5">
+        ${sidebarData.uncategorized.map(tc => renderTCItem(tc)).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (!html) {
+    html = '<p class="text-xs text-slate-600 px-3 py-4 text-center">Chưa có folder nào.<br/>Bấm + để tạo mới.</p>';
+  }
+
+  tree.innerHTML = html;
+}
+
+function renderTCItem(tc) {
+  const active = currentTestCaseId === tc.id ? 'active' : '';
+  return `<div class="tc-item ${active} flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer"
+    id="tc-${tc.id}"
+    onclick="loadTestCase('${tc.id}')">
+    <span class="method-${tc.method.toLowerCase()} text-xs font-bold w-10 shrink-0">${tc.method}</span>
+    <span class="text-xs text-slate-300 truncate">${esc(tc.name)}</span>
+  </div>`;
+}
+
+function toggleFolder(fid) {
+  const cases   = document.getElementById(`folder-cases-${fid}`);
+  const chevron = document.getElementById(`chevron-${fid}`);
+  if (!cases) return;
+  const isHidden = cases.classList.toggle('hidden');
+  chevron.classList.toggle('open', !isHidden);
+  // persist open state
+  const f = sidebarData.folders.find(x => x.id === fid);
+  if (f) f._open = !isHidden;
+}
+
+// ─── Folder CRUD ─────────────────────────────────────────────────────────────
+async function promptNewFolder() {
+  const name = prompt('Tên folder mới:');
+  if (!name || !name.trim()) return;
+  await fetch('/api/folders', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name: name.trim()})
+  });
+  await loadSidebar();
+}
+
+function startRename(fid) {
+  const span = document.getElementById(`fname-${fid}`);
+  const current = span.textContent;
+  span.outerHTML = `<input class="rename-input flex-1" id="rename-input-${fid}"
+    value="${esc(current)}"
+    onblur="commitRename('${fid}', this.value)"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${esc(current)}';this.blur();}"
+  />`;
+  document.getElementById(`rename-input-${fid}`).focus();
+}
+
+async function commitRename(fid, newName) {
+  if (!newName.trim()) { await loadSidebar(); return; }
+  await fetch(`/api/folders/${fid}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name: newName.trim()})
+  });
+  await loadSidebar();
+}
+
+async function deleteFolder(fid) {
+  const f = sidebarData.folders.find(x => x.id === fid);
+  const msg = f && f.test_cases.length > 0
+    ? `Xóa folder "${f.name}"? ${f.test_cases.length} test case sẽ chuyển sang Uncategorized.`
+    : `Xóa folder "${f?.name}"?`;
+  if (!confirm(msg)) return;
+  await fetch(`/api/folders/${fid}`, {method:'DELETE'});
+  await loadSidebar();
+}
+
+function refreshFolderSelect() {
+  const sel = document.getElementById('folder-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">📂 No folder</option>';
+  sidebarData.folders.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = `📁 ${f.name}`;
+    sel.appendChild(opt);
+  });
+  if (cur) sel.value = cur;
+}
+
+// ─── Load test case from sidebar ─────────────────────────────────────────────
+async function loadTestCase(tcId) {
+  const res = await fetch(`/api/test-cases/${tcId}`);
+  if (!res.ok) return;
+  const tc = await res.json();
+
+  showPage('new');
+  currentTestCaseId = tcId;
+
+  document.getElementById('tc-name').value = tc.name;
+  document.getElementById('url').value     = tc.url;
+  document.getElementById('method').value  = tc.method;
+  updateMethodColor();
+
+  // folder
+  document.getElementById('folder-select').value = tc.folder_id || '';
+
+  // params
+  kvData.params = Object.entries(tc.params || {}).map(([k,v])=>({k,v}));
+  if (!kvData.params.length) kvData.params = [{k:'',v:''}];
+  renderKV('params');
+
+  // headers
+  kvData.headers = Object.entries(tc.headers || {}).map(([k,v])=>({k,v}));
+  if (!kvData.headers.length) kvData.headers = [{k:'',v:''}];
+  renderKV('headers');
+
+  // body
+  document.getElementById('body-input').value = tc.body ? JSON.stringify(tc.body, null, 2) : '';
+
+  // code
+  if (tc.generated_code) {
+    showCode(tc.generated_code);
+    document.getElementById('btn-run').disabled = false;
+  }
+
+  // reset runner
+  document.getElementById('console-empty').classList.remove('hidden');
+  document.getElementById('console-output').classList.add('hidden');
+  document.getElementById('console-output').innerHTML = '';
+  document.getElementById('results-bar').classList.add('hidden');
+
+  // highlight active
+  document.querySelectorAll('.tc-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tc-${tcId}`)?.classList.add('active');
+}
+
+// ─── Generate ────────────────────────────────────────────────────────────────
+async function doGenerate() {
+  const name      = document.getElementById('tc-name').value.trim() || 'Unnamed';
+  const url       = document.getElementById('url').value.trim();
+  const method    = document.getElementById('method').value;
+  const folder_id = document.getElementById('folder-select').value || null;
+
+  if (!url) { showToast('Vui lòng nhập URL'); return; }
+
+  let body = null;
+  const rawBody = document.getElementById('body-input').value.trim();
+  if (rawBody) {
+    try { body = JSON.parse(rawBody); }
+    catch { document.getElementById('body-error').classList.remove('hidden'); return; }
+  }
+  document.getElementById('body-error').classList.add('hidden');
+
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = true;
+  document.getElementById('gen-icon').textContent = '⏳';
+  document.getElementById('gen-text').textContent = 'Generating…';
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name, url, method, folder_id,
+        headers: getKVObj('headers'), params: getKVObj('params'), body})
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.detail || 'Lỗi generate'); return; }
+
+    currentTestCaseId = data.test_case_id;
+    showCode(data.code);
+    document.getElementById('btn-run').disabled = false;
+
+    // reset runner area
+    document.getElementById('console-empty').classList.remove('hidden');
+    document.getElementById('console-output').classList.add('hidden');
+    document.getElementById('console-output').innerHTML = '';
+    document.getElementById('results-bar').classList.add('hidden');
+
+    await loadSidebar();
+
+    // highlight in sidebar
+    document.querySelectorAll('.tc-item').forEach(el=>el.classList.remove('active'));
+    document.getElementById(`tc-${data.test_case_id}`)?.classList.add('active');
+
+  } finally {
+    btn.disabled = false;
+    document.getElementById('gen-icon').textContent = '⚡';
+    document.getElementById('gen-text').textContent = 'Generate';
+  }
+}
+
+function showCode(code) {
+  const el = document.getElementById('code-content');
+  el.textContent = code;
+  hljs.highlightElement(el);
+  document.getElementById('code-empty').classList.add('hidden');
+  document.getElementById('code-block').classList.remove('hidden');
+}
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById('code-content').textContent);
+}
+
+// ─── Run Tests ───────────────────────────────────────────────────────────────
+async function runTests() {
+  if (!currentTestCaseId) return;
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('console-empty').classList.add('hidden');
+  const out = document.getElementById('console-output');
+  out.classList.remove('hidden');
+  out.innerHTML = '<span style="color:#818cf8">Đang khởi động pytest…</span>\n';
+  document.getElementById('results-bar').classList.add('hidden');
+
+  const r = await fetch(`/api/run/${currentTestCaseId}`, {method:'POST'});
+  const {run_id} = await r.json();
+
+  const es = new EventSource(`/api/stream/${run_id}`);
+  es.onmessage = e => {
+    const line = JSON.parse(e.data);
+    out.innerHTML += colorLine(line) + '\n';
+    out.scrollTop = out.scrollHeight;
+  };
+  es.addEventListener('done', e => {
+    es.close();
+    showResults(JSON.parse(e.data));
+    document.getElementById('btn-run').disabled = false;
+  });
+  es.onerror = () => { es.close(); document.getElementById('btn-run').disabled = false; };
+}
+
+function colorLine(line) {
+  const s = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (/PASSED/.test(line)) return `<span class="line-passed">${s}</span>`;
+  if (/FAILED|ERROR/.test(line)) return `<span style="color:#f87171">${s}</span>`;
+  if (/=====|-----/.test(line)) return `<span class="line-info">${s}</span>`;
+  return s;
+}
+
+function showResults(r) {
+  const bar = document.getElementById('results-bar');
+  bar.classList.remove('hidden'); bar.classList.add('flex');
+  document.getElementById('res-passed').textContent = r.passed;
+  document.getElementById('res-failed').textContent = r.failed;
+  document.getElementById('res-total').textContent  = r.total;
+  const badge = document.getElementById('res-badge');
+  if (r.status === 'passed') {
+    badge.textContent = '✓ ALL PASSED';
+    badge.className = 'ml-auto px-3 py-0.5 rounded-full text-xs font-bold badge-passed';
+  } else {
+    badge.textContent = '✗ FAILED';
+    badge.className = 'ml-auto px-3 py-0.5 rounded-full text-xs font-bold badge-failed';
+  }
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const rows = await (await fetch('/api/history')).json();
+  const tbody = document.getElementById('history-body');
+  if (!rows.length) {
+    document.getElementById('history-empty').classList.remove('hidden');
+    document.getElementById('history-table').classList.add('hidden');
+    return;
+  }
+  document.getElementById('history-empty').classList.add('hidden');
+  document.getElementById('history-table').classList.remove('hidden');
+  tbody.innerHTML = rows.map(r => `
+    <tr class="hover:bg-slate-800/40">
+      <td class="py-2.5 pr-3 font-medium text-white text-sm">${esc(r.name)}</td>
+      <td class="py-2.5 pr-3">
+        <span class="method-${r.method.toLowerCase()} font-bold text-xs">${r.method}</span>
+        <span class="text-slate-400 text-xs ml-2 truncate max-w-[160px] inline-block align-bottom">${esc(r.url)}</span>
+      </td>
+      <td class="py-2.5 pr-3">
+        <span class="px-2 py-0.5 rounded-full text-xs font-bold badge-${r.status}">${r.status.toUpperCase()}</span>
+      </td>
+      <td class="py-2.5 pr-3 text-center text-emerald-400 font-mono text-sm">${r.passed}</td>
+      <td class="py-2.5 pr-3 text-center text-red-400 font-mono text-sm">${r.failed}</td>
+      <td class="py-2.5 pr-3 text-slate-500 text-xs">${fmtDate(r.started_at)}</td>
+      <td class="py-2.5 text-right">
+        <div class="flex items-center justify-end gap-1.5">
+          <button onclick="viewOutput('${r.id}')" class="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">Output</button>
+          <button onclick="rerun('${r.id}')"      class="px-2 py-0.5 text-xs bg-indigo-800 hover:bg-indigo-700 rounded text-indigo-200">Re-run</button>
+          <button onclick="deleteRun('${r.id}',this)" class="px-2 py-0.5 text-xs bg-red-900/50 hover:bg-red-800 rounded text-red-300">Delete</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+async function viewOutput(runId) {
+  const data = await (await fetch(`/api/history/${runId}/output`)).json();
+  document.getElementById('modal-output').textContent = data.output || '(no output)';
+  document.getElementById('output-modal').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('output-modal').classList.add('hidden'); }
+
+async function deleteRun(runId, btn) {
+  if (!confirm('Xóa lịch sử này?')) return;
+  await fetch(`/api/history/${runId}`, {method:'DELETE'});
+  btn.closest('tr').remove();
+}
+
+async function rerun(runId) {
+  const r = await fetch(`/api/history/${runId}/rerun`, {method:'POST'});
+  if (!r.ok) { alert('Re-run thất bại'); return; }
+  const {run_id} = await r.json();
+  showPage('new');
+  document.getElementById('console-empty').classList.add('hidden');
+  const out = document.getElementById('console-output');
+  out.classList.remove('hidden');
+  out.innerHTML = '<span style="color:#818cf8">Re-running…</span>\n';
+  document.getElementById('results-bar').classList.add('hidden');
+  document.getElementById('btn-run').disabled = true;
+
+  const es = new EventSource(`/api/stream/${run_id}`);
+  es.onmessage = e => { out.innerHTML += colorLine(JSON.parse(e.data)) + '\n'; out.scrollTop=out.scrollHeight; };
+  es.addEventListener('done', e => { es.close(); showResults(JSON.parse(e.data)); document.getElementById('btn-run').disabled = !currentTestCaseId; });
+  es.onerror = () => { es.close(); };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 4000);
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso+'Z').toLocaleString('vi-VN');
+}
+document.getElementById('output-modal').addEventListener('click', function(e) { if(e.target===this)closeModal(); });
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+loadSidebar();
+</script>
+</body>
+</html>

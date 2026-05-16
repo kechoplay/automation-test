@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"D:\\\\Work\\\\automation-test\\\\reports\\\\screenshots\")",
+      "PowerShell($body = '{\"name\":\"Get Posts\",\"url\":\"https://jsonplaceholder.typicode.com/posts\",\"method\":\"GET\",\"headers\":{},\"params\":{},\"body\":null}'; Invoke-RestMethod -Uri \"http://127.0.0.1:8000/api/generate\" -Method POST -ContentType \"application/json\" -Body $body | Select-Object test_case_id, @{n=\"code_lines\";e={\\($_.code -split \"`n\"\\).Count}})",
+      "PowerShell($body = '{\"name\":\"Get Posts\",\"url\":\"https://jsonplaceholder.typicode.com/posts\",\"method\":\"GET\",\"headers\":{},\"params\":{},\"body\":null}'; $r = Invoke-RestMethod -Uri \"http://127.0.0.1:8000/api/generate\" -Method POST -ContentType \"application/json\" -Body $body; Write-Output \"test_case_id=$\\($r.test_case_id\\)\"; Write-Output \"lines=$\\(\\(\\($r.code -split [Environment]::NewLine\\).Count\\)\\)\")",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://127.0.0.1:8000/api/history/8472e8f3-eaec-429a-9615-4a8b90b81b1f/output\"; Write-Output $r.output)"
+    ]
+  }
+}
