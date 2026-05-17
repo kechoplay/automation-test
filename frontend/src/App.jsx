@@ -32,13 +32,15 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0f1117', color: '#e2e8f0' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0f1117', color: '#e2e8f0' }}>
       <Header page={page} setPage={setPage} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           refreshKey={sidebarRefreshKey}
           currentTestCaseId={currentTestCaseId}
           onSelectTestCase={handleSelectTestCase}
+          onRefresh={refreshSidebar}
+          onDeleteTestCase={() => setCurrentTestCaseId(null)}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
           {page === 'new' ? (

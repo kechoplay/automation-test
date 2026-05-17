@@ -18,6 +18,7 @@ const api = {
     body: JSON.stringify(data),
   }),
   getTestCase: (id) => fetch(`/api/test-cases/${id}`).then(r => r.json()),
+  deleteTestCase: (id) => fetch(`/api/test-cases/${id}`, { method: 'DELETE' }),
 
   startRun: (tcId) => fetch(`/api/run/${tcId}`, { method: 'POST' }).then(r => r.json()),
 

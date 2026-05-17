@@ -47,7 +47,11 @@ export default function NewTest({ currentTestCaseId, setCurrentTestCaseId, refre
   const consoleRef = useRef(null)
 
   useEffect(() => {
-    api.getFolders().then(d => setFolders(d.folders || []))
+    api.getFolders().then(d => {
+      const list = d.folders || []
+      setFolders(list)
+      setFolderId(id => id || list[0]?.id || '')
+    })
   }, [refreshKey])
 
   useEffect(() => {
@@ -132,6 +136,7 @@ export default function NewTest({ currentTestCaseId, setCurrentTestCaseId, refre
       setConsoleLines([])
       setResults(null)
       onSidebarRefresh()
+      showToast(data.created ? 'Đã tạo test case mới' : 'Đã cập nhật test case')
     } finally {
       setGenerating(false)
     }
@@ -158,7 +163,6 @@ export default function NewTest({ currentTestCaseId, setCurrentTestCaseId, refre
           onChange={e => setFolderId(e.target.value)}
           className="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
         >
-          <option value="">📂 No folder</option>
           {folders.map(f => <option key={f.id} value={f.id}>📁 {f.name}</option>)}
         </select>
         <select
