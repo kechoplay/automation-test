@@ -1,8 +1,8 @@
-# Hướng dẫn sử dụng AutoTest UI
+# Hướng dẫn sử dụng AutoTest API
 
 ## Giới thiệu
 
-AutoTest UI là công cụ giúp bạn tự động tạo và chạy test cho API mà không cần viết code thủ công.  
+AutoTest API là công cụ giúp bạn tự động tạo và chạy test cho API mà không cần viết code thủ công.  
 Giao diện tương tự Postman — nhập API vào, hệ thống tự tạo test cases và chạy luôn.
 
 ---

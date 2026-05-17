@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import asyncio
 import re
+import subprocess
 import sys
+import threading
 import traceback
-import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent          # D:\Work\automation-test
@@ -26,14 +27,6 @@ def get_buffer(run_id: str) -> tuple[list[str], bool]:
 
 def _parse_results(output: str) -> tuple[int, int, int]:
     """Extract total/passed/failed from pytest summary line."""
-    match = re.search(
-        r"(\d+) passed|(\d+) failed|(\d+) error",
-        output, re.IGNORECASE
-    )
-    passed = len(re.findall(r"(\d+) passed", output))
-    failed_m = re.findall(r"(\d+) failed", output)
-    error_m  = re.findall(r"(\d+) error",  output)
-
     passed_n = int(re.search(r"(\d+) passed", output).group(1)) if re.search(r"(\d+) passed", output) else 0
     failed_n = int(re.search(r"(\d+) failed", output).group(1)) if re.search(r"(\d+) failed", output) else 0
     error_n  = int(re.search(r"(\d+) error",  output).group(1)) if re.search(r"(\d+) error",  output) else 0
@@ -43,15 +36,14 @@ def _parse_results(output: str) -> tuple[int, int, int]:
 
 async def run_tests(run_id: str, test_case_id: str, generated_code: str):
     """
-    Runs in background. Fills _buffers[run_id] with output lines.
-    Updates DB when done.
+    Runs pytest in a background thread (avoids asyncio subprocess issues on Windows).
+    Streams output via asyncio.Queue into _buffers[run_id].
     """
     from web.database import finish_run          # lazy import to avoid circular
 
     _buffers[run_id] = []
     _done[run_id]    = False
 
-    # Write temp file
     file_name = f"test_gen_{run_id[:8]}.py"
     test_file = TEMP_DIR / file_name
 
@@ -65,28 +57,40 @@ async def run_tests(run_id: str, test_case_id: str, generated_code: str):
             "--color=no",
         ]
 
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            cwd=str(ROOT),
-        )
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        loop = asyncio.get_event_loop()
+
+        def _reader():
+            # Runs in a daemon thread — reads pytest stdout line by line
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    cwd=str(ROOT),
+                )
+                for raw in proc.stdout:
+                    line = raw.decode("utf-8", errors="replace").rstrip()
+                    loop.call_soon_threadsafe(queue.put_nowait, line)
+                proc.wait()
+            except Exception as e:
+                loop.call_soon_threadsafe(queue.put_nowait, f"[ERROR] {e}")
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+
+        threading.Thread(target=_reader, daemon=True).start()
 
         output_lines: list[str] = []
-
         while True:
-            raw = await proc.stdout.readline()
-            if not raw:
+            line = await queue.get()
+            if line is None:
                 break
-            line = raw.decode("utf-8", errors="replace").rstrip()
             _buffers[run_id].append(line)
             output_lines.append(line)
 
-        await proc.wait()
         full_output = "\n".join(output_lines)
         total, passed, failed = _parse_results(full_output)
         status = "passed" if failed == 0 and total > 0 else "failed"
-
         finish_run(run_id, status, total, passed, failed, full_output)
 
     except Exception as e:

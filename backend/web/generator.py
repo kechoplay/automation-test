@@ -31,11 +31,12 @@ def generate(url: str, method: str, headers: dict, params: dict, body) -> tuple[
     method = method.upper()
 
     # --- Call the real API ---
+    merged_headers = {"Accept": "application/json", **(headers or {})}
     try:
         resp = requests.request(
             method=method,
             url=url,
-            headers=headers or {},
+            headers=merged_headers,
             params=params or {},
             json=body if method in ("POST", "PUT", "PATCH") else None,
             timeout=10,
@@ -60,7 +61,8 @@ def generate(url: str, method: str, headers: dict, params: dict, body) -> tuple[
     class_name = _to_class_name(url, method)
 
     # --- Build test code ---
-    headers_repr = json.dumps(headers or {}, ensure_ascii=False)
+    effective_headers = {"Accept": "application/json", **(headers or {})}
+    headers_repr = json.dumps(effective_headers, ensure_ascii=False)
     params_repr  = json.dumps(params or {},  ensure_ascii=False)
     body_repr    = json.dumps(body,           ensure_ascii=False) if body else "None"
     fields_repr  = json.dumps(fields)

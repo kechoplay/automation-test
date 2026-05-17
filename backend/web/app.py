@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
+
+# uvicorn reload=True spawns a worker subprocess that doesn't inherit the
+# event loop policy set in run_web.py — must set it here so subprocess picks it up
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +23,7 @@ from web.database import (
 from web.generator import generate
 from web import runner as test_runner
 
-app = FastAPI(title="AutoTest UI")
+app = FastAPI(title="AutoTest API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,7 +85,7 @@ async def api_generate(req: GenerateRequest):
     if err:
         raise HTTPException(status_code=400, detail=err)
 
-    tc_id = save_test_case(
+    tc_id, created = save_test_case(
         name=req.name,
         url=req.url,
         method=req.method,
@@ -89,7 +95,7 @@ async def api_generate(req: GenerateRequest):
         generated_code=code,
         folder_id=req.folder_id,
     )
-    return {"test_case_id": tc_id, "code": code}
+    return {"test_case_id": tc_id, "code": code, "created": created}
 
 
 @app.get("/api/test-cases/{tc_id}")
