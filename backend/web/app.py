@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from web.database import (
@@ -17,8 +19,12 @@ from web import runner as test_runner
 
 app = FastAPI(title="AutoTest UI")
 
-STATIC_DIR = Path(__file__).parent / "static"
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -39,13 +45,6 @@ class FolderRequest(BaseModel):
 
 class MoveRequest(BaseModel):
     folder_id: str | None = None
-
-
-# ── Pages ─────────────────────────────────────────────────────────────────────
-
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    return (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 
 
 # ── Folders ───────────────────────────────────────────────────────────────────

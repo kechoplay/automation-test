@@ -1,6 +1,8 @@
 """
 Nhận API config từ user → gọi API thật → sinh pytest code.
 """
+from __future__ import annotations
+
 import json
 import re
 import requests

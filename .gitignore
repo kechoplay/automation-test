@@ -8,3 +8,6 @@ allure-results/
 allure-report/
 .venv/
 venv/
+node_modules/
+frontend/dist/
+

@@ -2,6 +2,8 @@
 Writes generated code to a temp file, runs pytest, streams output line-by-line.
 Parses final results and updates DB.
 """
+from __future__ import annotations
+
 import asyncio
 import re
 import sys

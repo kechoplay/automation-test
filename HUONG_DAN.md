@@ -7,30 +7,123 @@ Giao diện tương tự Postman — nhập API vào, hệ thống tự tạo te
 
 ---
 
-## Cài đặt lần đầu
+## Cấu trúc dự án
 
-Chỉ cần làm 1 lần duy nhất.
-
-**Bước 1 — Cài Python dependencies:**
-```powershell
-cd D:\Work\automation-test
-pip install -r requirements.txt
-pip install -r requirements_web.txt
-playwright install chromium
+```
+automation-test/
+├── backend/                    ← Python / FastAPI
+│   ├── web/
+│   │   ├── app.py              ← API routes
+│   │   ├── generator.py        ← Tự động tạo test code
+│   │   ├── runner.py           ← Chạy pytest, stream kết quả
+│   │   ├── database.py         ← Lưu/đọc SQLite
+│   │   └── data.db             ← Database (tự tạo khi chạy lần đầu)
+│   ├── tests/
+│   │   ├── _generated/         ← File test tạm (tự xóa sau khi chạy)
+│   │   └── api/                ← API tests viết tay
+│   ├── run_web.py              ← Khởi động server
+│   ├── requirements.txt        ← Dependencies cho pytest
+│   ├── requirements_web.txt    ← Dependencies cho web server
+│   └── venv/                   ← Python virtual environment
+└── frontend/                   ← React / Vite
+    ├── src/
+    │   ├── App.jsx
+    │   ├── api.js              ← Tất cả API calls
+    │   ├── components/
+    │   └── pages/
+    ├── package.json
+    └── vite.config.js
 ```
 
-**Bước 2 — Khởi động server:**
+---
+
+## Cài đặt lần đầu
+
+Chỉ cần làm 1 lần duy nhất. Cần cài sẵn: **Python 3.9+** và **Node.js 18+**.
+
+---
+
+### macOS
+
+Mở **2 cửa sổ Terminal**.
+
+**Terminal 1 — Backend:**
+```zsh
+cd ~/Desktop/automation-test/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt -r requirements_web.txt eval_type_backport
+python3 run_web.py
+```
+
+**Terminal 2 — Frontend:**
+```zsh
+cd ~/Desktop/automation-test/frontend
+npm install
+npm run dev
+```
+
+**Mở trình duyệt:**
+```
+http://localhost:5173
+```
+
+---
+
+### Windows
+
+Mở **2 cửa sổ PowerShell**.
+
+**PowerShell 1 — Backend:**
 ```powershell
-cd D:\Work\automation-test
+cd D:\Work\automation-test\backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt -r requirements_web.txt
 python run_web.py
 ```
 
-**Bước 3 — Mở trình duyệt và truy cập:**
-```
-http://localhost:8000
+**PowerShell 2 — Frontend:**
+```powershell
+cd D:\Work\automation-test\frontend
+npm install
+npm run dev
 ```
 
-> Server cần đang chạy mỗi khi bạn muốn dùng. Giữ cửa sổ terminal mở.
+**Mở trình duyệt:**
+```
+http://localhost:5173
+```
+
+---
+
+## Những lần sau
+
+Backend và Frontend phải chạy cùng lúc.
+
+**macOS:**
+```zsh
+# Terminal 1
+cd ~/Desktop/automation-test/backend
+source venv/bin/activate
+python3 run_web.py
+
+# Terminal 2
+cd ~/Desktop/automation-test/frontend
+npm run dev
+```
+
+**Windows:**
+```powershell
+# PowerShell 1
+cd D:\Work\automation-test\backend
+venv\Scripts\activate
+python run_web.py
+
+# PowerShell 2
+cd D:\Work\automation-test\frontend
+npm run dev
+```
 
 ---
 
@@ -38,7 +131,7 @@ http://localhost:8000
 
 ### 1. Tạo test case mới
 
-Mở `http://localhost:8000` → Tab **New Test**
+Mở `http://localhost:5173` → Tab **New Test**
 
 | Trường | Mô tả | Ví dụ |
 |--------|-------|-------|
@@ -51,7 +144,7 @@ Mở `http://localhost:8000` → Tab **New Test**
 
 ### 2. Generate test functions
 
-Sau khi điền thông tin, bấm nút **⚡ Generate Tests**.
+Sau khi điền thông tin, bấm nút **⚡ Generate**.
 
 Hệ thống sẽ:
 1. Gọi API của bạn để kiểm tra response
@@ -72,8 +165,8 @@ Hệ thống sẽ:
 Bấm nút **▶ Run Tests** ở panel bên phải.
 
 Kết quả hiển thị theo thời gian thực:
-- 🟢 Dòng xanh = test PASSED
-- 🔴 Dòng đỏ = test FAILED
+- Dòng xanh = test PASSED
+- Dòng đỏ = test FAILED
 - Cuối cùng hiển thị tổng: Passed / Failed / Total
 
 ### 4. Xem lịch sử
@@ -90,36 +183,13 @@ Mỗi dòng trong lịch sử có thể:
 ## Dữ liệu lưu ở đâu
 
 ```
-D:\Work\automation-test\web\data.db    ← SQLite database
+backend/web/data.db    ← SQLite database
 ```
 
 | Bảng | Nội dung |
 |------|----------|
 | `test_cases` | Thông tin API + generated code |
 | `test_runs` | Lịch sử mỗi lần chạy (status, passed, failed, log) |
-
----
-
-## Cấu trúc dự án
-
-```
-automation-test/
-├── web/
-│   ├── app.py          ← FastAPI server (routes)
-│   ├── generator.py    ← Tự động tạo test code từ API config
-│   ├── runner.py       ← Chạy pytest, stream kết quả về UI
-│   ├── database.py     ← Lưu/đọc SQLite
-│   ├── data.db         ← Database (tự tạo khi chạy lần đầu)
-│   └── static/
-│       └── index.html  ← Giao diện web
-├── tests/
-│   ├── _generated/     ← File test tạm (tự xóa sau khi chạy)
-│   ├── api/            ← API tests viết tay
-│   └── web/            ← Web UI tests viết tay
-├── run_web.py          ← Khởi động server
-├── requirements.txt    ← Dependencies cho pytest
-└── requirements_web.txt← Dependencies cho web server
-```
 
 ---
 
@@ -138,13 +208,34 @@ automation-test/
 - Bấm **Output** trong History để xem chi tiết lỗi
 - Dòng đỏ sẽ chỉ rõ test nào fail và lý do
 
-### Server không khởi động
+### Backend không khởi động
+
+**macOS:**
+```zsh
+# Kiểm tra port 8000 có đang bị dùng không
+lsof -i :8000
+
+# Kill process đang chiếm port
+lsof -ti:8000 | xargs kill -9
+```
+
+**Windows:**
 ```powershell
 # Kiểm tra port 8000 có đang bị dùng không
 netstat -ano | findstr :8000
+```
 
-# Đổi port nếu cần — sửa file run_web.py
-# port=8000  →  port=8001
+### Frontend không khởi động
+
+```zsh
+# Kiểm tra port 5173
+lsof -i :5173           # macOS
+netstat -ano | findstr :5173   # Windows
+
+# Cài lại node_modules nếu cần
+cd frontend
+rm -rf node_modules
+npm install
 ```
 
 ---
@@ -152,10 +243,11 @@ netstat -ano | findstr :8000
 ## Workflow khuyến nghị
 
 ```
-1. Bật server:     python run_web.py
-2. Mở browser:     http://localhost:8000
-3. Nhập API info → Generate Tests
-4. Xem code được tạo ra (panel trái)
-5. Bấm Run Tests → xem kết quả real-time
-6. Vào History để xem lại hoặc chạy lại bất cứ lúc nào
+1. Bật backend:    python3 run_web.py     (cổng 8000)
+2. Bật frontend:   npm run dev             (cổng 5173)
+3. Mở browser:     http://localhost:5173
+4. Nhập API info → Generate
+5. Xem code được tạo ra (panel trái)
+6. Bấm Run Tests → xem kết quả real-time
+7. Vào History để xem lại hoặc chạy lại bất cứ lúc nào
 ```
